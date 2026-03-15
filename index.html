@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoe Mogul | Gen-Z Startup Sim</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        #app { width: 95%; max-width: 800px; background: #1e293b; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        
+        /* UI Components */
+        .header { background: var(--primary); padding: 20px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; background: #0f172a; border-bottom: 2px solid #334155; }
+        .stat-card { text-align: center; padding: 10px; border-radius: 10px; background: #1e293b; border: 1px solid #475569; }
+        .stat-val { display: block; font-size: 1.2rem; font-weight: bold; color: var(--success); }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; }
+
+        .content { padding: 30px; min-height: 300px; }
+        .instruction-card { background: #334155; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; border-left: 4px solid var(--primary); }
+        
+        .btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border: none; border-radius: 12px; background: #334155; color: white; cursor: pointer; text-align: left; font-size: 1rem; transition: all 0.2s; border: 1px solid transparent; }
+        .btn:hover { background: #475569; border-color: var(--primary); transform: translateX(5px); }
+        .btn-start { background: var(--primary); text-align: center; font-weight: bold; }
+        
+        #log { font-style: italic; color: #94a3b8; margin-top: 20px; text-align: center; min-height: 24px; }
+        .hidden { display: none; }
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #334155; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="header">
+        <h1 style="margin:0">👟 SHOE MOGUL</h1>
+        <small>Class 12 Business Studies Edition</small>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><span class="stat-label">Budget</span><span id="budget" class="stat-val">₹50,000</span></div>
+        <div class="stat-card"><span class="stat-label">Reputation</span><span id="reputation" class="stat-val">0</span></div>
+        <div class="stat-card"><span class="stat-label">Progress</span><span id="progress" class="stat-val">0/12</span></div>
+    </div>
+
+    <div id="screen-start" class="content">
+        <div class="instruction-card">
+            <strong>HOW TO PLAY:</strong> You are the CEO of a new shoe brand. You have 12 months (decisions) to make it or break it. 
+            <br><br>
+            • <strong>Choices:</strong> Every choice has a cost and an impact.<br>
+            • <strong>Strategy:</strong> High spending leads to high fame, but low cash. <br>
+            • <strong>Success:</strong> Your final profit is 50% strategy and 50% "Market Luck".
+        </div>
+        <button class="btn btn-start" onclick="initGame()">LAUNCH STARTUP</button>
+    </div>
+
+    <div id="screen-game" class="content hidden">
+        <h3 id="question-title">Month 1: The Brand</h3>
+        <p id="question-desc" style="color:#cbd5e1">Every brand needs an identity.</p>
+        <div id="options-container"></div>
+        <p id="log"></p>
+    </div>
+
+    <div id="screen-result" class="content hidden">
+        <h2 id="final-status">Calculating Results...</h2>
+        <div class="stat-card" style="margin: 20px 0; padding: 20px;">
+            <p>Total Revenue: <span id="res-rev" class="stat-val">₹0</span></p>
+            <p>Net Profit/Loss: <span id="res-pl" class="stat-val">₹0</span></p>
+        </div>
+        <button class="btn btn-start" onclick="location.reload()">REBOOT STARTUP</button>
+        <div id="leaderboard-box" style="margin-top:20px">
+            <h4>Hall of Fame (Top Profits)</h4>
+            <div id="leaderboard-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let budget = 50000;
+    let reputation = 0;
+    let currentStep = 0;
+    let spentTotal = 0;
+
+    const scenarios = [
+        { title: "The Brand Identity", desc: "What kind of shoes are you making?", 
+          options: [
+              { text: "Sustainable Eco-friendly Sneakers (Cost: ₹10k)", cost: 10000, rep: 15 },
+              { text: "Flashy High-Heel Party Wear (Cost: ₹5k)", cost: 5000, rep: 5 },
+              { text: "Cheap Daily Casuals (Cost: ₹2k)", cost: 2000, rep: 2 }
+          ]},
+        { title: "The Sales Channel", desc: "Where will you sell them?", 
+          options: [
+              { text: "Instagram/Website Only (Cost: ₹3k)", cost: 3000, rep: 8 },
+              { text: "Rent a Mall Stall (Cost: ₹15k)", cost: 15000, rep: 12 },
+              { text: "Local Street Market (Cost: ₹1k)", cost: 1000, rep: 3 }
+          ]},
+        { title: "Marketing Crisis", desc: "A customer says your shoes broke in 1 day! What do you do?", 
+          options: [
+              { text: "Full Refund + Public Apology (Cost: ₹5k)", cost: 5000, rep: 20 },
+              { text: "Ignore the Tweet (Cost: ₹0)", cost: 0, rep: -15 },
+              { text: "Blame the Customer (Cost: ₹0)", cost: 0, rep: -30 }
+          ]},
+        { title: "Packaging", desc: "Unboxing is everything on TikTok.", 
+          options: [
+              { text: "Premium Magnetic Boxes (Cost: ₹8k)", cost: 8000, rep: 15 },
+              { text: "Simple Recycled Brown Paper (Cost: ₹2k)", cost: 2000, rep: 10 },
+              { text: "Plastic Bags (Cost: ₹500)", cost: 500, rep: -5 }
+          ]},
+        { title: "Influencer Collab", desc: "A local fashion vlogger offers a shoutout.", 
+          options: [
+              { text: "Pay for Mega-Influencer (Cost: ₹12k)", cost: 12000, rep: 25 },
+              { text: "Give free shoes to 5 Small Creators (Cost: ₹4k)", cost: 4000, rep: 12 },
+              { text: "Decline - Too expensive (Cost: ₹0)", cost: 0, rep: 0 }
+          ]},
+        { title: "The Logo", desc: "Visuals attract customers.", 
+          options: [
+              { text: "Hire Professional Agency (Cost: ₹7k)", cost: 7000, rep: 18 },
+              { text: "Design it yourself on Canva (Cost: ₹0)", cost: 0, rep: 5 },
+              { text: "Use a random Clip-Art (Cost: ₹0)", cost: 0, rep: -5 }
+          ]},
+        { title: "Festive Sale", desc: "Diwali is coming! How do you react?", 
+          options: [
+              { text: "50% Off Everything (Cost: ₹8k in margin)", cost: 8000, rep: 20 },
+              { text: "Buy 1 Get 1 Free (Cost: ₹10k in margin)", cost: 10000, rep: 25 },
+              { text: "No discounts (Cost: ₹0)", cost: 0, rep: 2 }
+          ]},
+        { title: "Product Expansion", desc: "Should you add socks to your collection?", 
+          options: [
+              { text: "Yes, Premium Socks (Cost: ₹6k)", cost: 6000, rep: 8 },
+              { text: "No, Focus on shoes (Cost: ₹0)", cost: 0, rep: 0 }
+          ]},
+        { title: "Celebrity Spotted", desc: "A celebrity wore your shoes by accident! Pay for the photo rights?", 
+          options: [
+              { text: "Yes, Buy Rights (Cost: ₹15k)", cost: 15000, rep: 40 },
+              { text: "Just repost the low-quality pic (Cost: ₹0)", cost: 0, rep: 10 }
+          ]},
+        { title: "Supply Chain", desc: "Your material supplier raised prices.", 
+          options: [
+              { text: "Switch to cheaper, lower quality (Cost: ₹-2k)", cost: -2000, rep: -10 },
+              { text: "Keep quality and pay more (Cost: ₹4k)", cost: 4000, rep: 15 }
+          ]},
+        { title: "Customer Service", desc: "Hire a chatbot or a human?", 
+          options: [
+              { text: "Human Support (Cost: ₹5k)", cost: 5000, rep: 15 },
+              { text: "AI Bot (Cost: ₹1k)", cost: 1000, rep: 5 }
+          ]},
+        { title: "Final Push", desc: "One last ad campaign before year-end.", 
+          options: [
+              { text: "YouTube Pre-roll ads (Cost: ₹9k)", cost: 9000, rep: 12 },
+              { text: "Facebook Group Ads (Cost: ₹2k)", cost: 2000, rep: 5 },
+              { text: "Save the remaining cash (Cost: ₹0)", cost: 0, rep: 0 }
+          ]}
+    ];
+
+    function initGame() {
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-game').classList.remove('hidden');
+        renderStep();
+    }
+
+    function renderStep() {
+        if (currentStep >= scenarios.length) {
+            finishGame();
+            return;
+        }
+        const data = scenarios[currentStep];
+        document.getElementById('question-title').innerText = data.title;
+        document.getElementById('question-desc').innerText = data.desc;
+        document.getElementById('progress').innerText = `${currentStep + 1}/12`;
+        
+        let html = "";
+        data.options.forEach((opt, i) => {
+            html += `<button class="btn" onclick="handleChoice(${i})">${opt.text}</button>`;
+        });
+        document.getElementById('options-container').innerHTML = html;
+    }
+
+    function handleChoice(index) {
+        const choice = scenarios[currentStep].options[index];
+        if (budget < choice.cost) {
+            document.getElementById('log').innerText = "⚠️ Insufficient funds for this choice!";
+            return;
+        }
+        
+        budget -= choice.cost;
+        spentTotal += Math.max(0, choice.cost);
+        reputation += choice.rep;
+        
+        updateUI();
+        currentStep++;
+        renderStep();
+    }
+
+    function updateUI() {
+        document.getElementById('budget').innerText = `₹${budget.toLocaleString()}`;
+        document.getElementById('reputation').innerText = reputation;
+    }
+
+    function finishGame() {
+        document.getElementById('screen-game').classList.add('hidden');
+        document.getElementById('screen-result').classList.remove('hidden');
+
+        // Logic: 50/50 Market Success Ratio
+        const isMarketBooming = Math.random() > 0.5;
+        let revenue = 0;
+
+        if (isMarketBooming) {
+            // Success: Reputation translates to high sales
+            revenue = (reputation * 1200) + 40000;
+            document.getElementById('final-status').innerText = "🚀 YOUR BRAND WENT VIRAL!";
+            document.getElementById('final-status').style.color = "var(--success)";
+        } else {
+            // Loss/Struggle: Market was cold
+            revenue = (reputation * 400) + 10000;
+            document.getElementById('final-status').innerText = "📉 THE MARKET CRASHED";
+            document.getElementById('final-status').style.color = "var(--danger)";
+        }
+
+        const profitLoss = revenue - 50000; // Original investment was 50k
+        
+        document.getElementById('res-rev').innerText = `₹${Math.round(revenue).toLocaleString()}`;
+        document.getElementById('res-pl').innerText = `₹${Math.round(profitLoss).toLocaleString()}`;
+        document.getElementById('res-pl').style.color = profitLoss >= 0 ? "var(--success)" : "var(--danger)";
+
+        updateLeaderboard(Math.round(profitLoss));
+    }
+
+    function updateLeaderboard(score) {
+        let scores = JSON.parse(localStorage.getItem('shoeSimScores') || "[]");
+        scores.push(score);
+        scores.sort((a, b) => b - a);
+        scores = scores.slice(0, 5);
+        localStorage.setItem('shoeSimScores', JSON.stringify(scores));
+
+        let listHtml = "";
+        scores.forEach((s, i) => {
+            listHtml += `<div class="leaderboard-item"><span>#${i+1} Startup</span><span>₹${s.toLocaleString()}</span></div>`;
+        });
+        document.getElementById('leaderboard-list').innerHTML = listHtml;
+    }
+</script>
+
+</body>
+</html>
